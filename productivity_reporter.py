@@ -34,18 +34,19 @@ def app():
             st.error(f"API Key Error: {e}")
             return
 
-        # Project Name input (same as your previous `text_input` setup)
-        project_name = st.text_input("Enter Project Name", placeholder="Enter project name here...")
+        # Move these inputs to the sidebar
+        with st.sidebar:
+            # Project Name input (same as your previous `text_input` setup)
+            project_name = st.text_input("Enter Project Name", "Mixed-Use Development Phase 1")
 
-        # If project name is empty, ask the user to input one
-        if not project_name:
-            st.warning("⚠️ Please enter a project name.")
+            # Reporting Period input
+            reporting_period = st.text_input("Reporting Period", "Week of August 7 - August 13, 2025")
 
-        reporting_period = st.text_input("Reporting Period", "Week of August 7 - August 13, 2025")
-        description = st.text_area(
-            "Enter progress description",
-            placeholder="E.g., Completed foundation pouring for Block A. Started steel framing for Block B..."
-        )
+            # Progress description input
+            description = st.text_area(
+                "Enter progress description",
+                placeholder="E.g., Completed foundation pouring for Block A. Started steel framing for Block B..."
+            )
 
         if st.button("Generate Productivity Report"):
             if not description:
