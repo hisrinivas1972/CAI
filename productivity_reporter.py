@@ -55,25 +55,28 @@ def app():
 
             # Proceed with generating the report as usual
             today_str = datetime.today().strftime("%B %d, %Y")
+
+            # Dynamically updating the prompt with the user inputs
             prompt = f"""
-            Project Productivity Report  
-            Date: {today_str}  
-            Project: {project_name}  
+            Generate a construction project productivity report based on the following details:
+            
+            Project Name: {project_name}
             Reporting Period: {reporting_period}
-            
-            1. Overall Summary
-            The project continues to demonstrate good progress...
-            2. Key Accomplishments
-            Completed foundation pouring for Block A. Steel framing for Block B.
-            3. Challenges/Blockers
-            No major blockers identified during this period.
-            4. Plan for Next Period
-            Continue with the vertical construction for Block A and proceed with the steel framing for Block B.
+            Description of Progress: {description}
+
+            The report should be structured with the following sections:
+            1. Overall Summary: A brief overview of the project status and general progress during the reporting period.
+            2. Key Accomplishments: A list of major completed tasks and milestones during the period.
+            3. Identified Challenges/Blockers: Any issues or delays encountered during the period.
+            4. Plan for Next Period: Upcoming tasks, goals, and any actions needed to address identified issues.
             """
-            
+
             try:
+                # Call the Gemini AI model
                 model = genai.GenerativeModel("gemini-2.5-flash")
                 response = model.generate_content(prompt)
+                
+                # Display the result in markdown format
                 st.subheader("🏗️ Generated Productivity Report")
                 st.markdown(response.text)
             except Exception as e:
