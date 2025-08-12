@@ -70,4 +70,4 @@ Here is the progress description:
             st.error(f"AI Error: {e}")
 
 if __name__ == "__main__":
-    app()
+    app(),
