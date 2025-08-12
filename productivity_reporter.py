@@ -34,8 +34,13 @@ def app():
             st.error(f"API Key Error: {e}")
             return
 
-        # Your existing code for generating the report
-        project_name = st.text_input("Project Name", "Mixed-Use Development Phase 1")
+        # Project Name input (same as your previous `text_input` setup)
+        project_name = st.text_input("Enter Project Name", placeholder="Enter project name here...")
+
+        # If project name is empty, ask the user to input one
+        if not project_name:
+            st.warning("⚠️ Please enter a project name.")
+
         reporting_period = st.text_input("Reporting Period", "Week of August 7 - August 13, 2025")
         description = st.text_area(
             "Enter progress description",
@@ -44,7 +49,7 @@ def app():
 
         if st.button("Generate Productivity Report"):
             if not description:
-                st.warning("Please enter a progress description to generate the report.")
+                st.warning("⚠️ Please enter a progress description to generate the report.")
                 return
 
             # Proceed with generating the report as usual
@@ -58,8 +63,13 @@ def app():
             1. Overall Summary
             The project continues to demonstrate good progress...
             2. Key Accomplishments
-            ...
+            Completed foundation pouring for Block A. Steel framing for Block B.
+            3. Challenges/Blockers
+            No major blockers identified during this period.
+            4. Plan for Next Period
+            Continue with the vertical construction for Block A and proceed with the steel framing for Block B.
             """
+            
             try:
                 model = genai.GenerativeModel("gemini-2.5-flash")
                 response = model.generate_content(prompt)
