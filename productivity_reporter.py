@@ -70,8 +70,4 @@ Here is the progress description:
             st.error(f"AI Error: {e}")
 
 if __name__ == "__main__":
-    import streamlit.cli as stcli
-    import sys
-    sys.argv = ["streamlit", "run", "productivity_reporter.py"]
-    sys.exit(stcli.main())
-
+    app()
