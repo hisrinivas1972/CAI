@@ -1,77 +1,64 @@
 import streamlit as st
 import google.generativeai as genai
-from datetime import datetime
+
+def generate_productivity_report(description: str) -> str:
+    """Call Gemini API to generate productivity report."""
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    prompt = f"""
+    You are a construction project manager AI assistant. Based on the following progress description, 
+    generate a formal and structured productivity report. The report should be well-formatted 
+    using Markdown and include these sections:
+    1. **Overall Summary:** A brief overview of the project status.
+    2. **Key Accomplishments:** A bulleted list of completed tasks and milestones.
+    3. **Identified Challenges/Blockers:** A bulleted list of any issues hindering progress.
+    4. **Plan for Next Period:** A bulleted list of upcoming tasks and goals.
+
+    Here is the progress description:
+    ---
+    {description}
+    ---
+    """
+    response = model.generate_content(prompt)
+    return response.text
 
 def app():
     st.title("Productivity Reporter")
-    st.write("Generate a structured construction project productivity report using AI.")
+    st.write("Generate a structured productivity report for your construction project using Gemini AI.")
 
-    # Get API key from session state
+    # Get API key from session state (set on Dashboard or initial input)
     google_api_key = st.session_state.get("google_api_key", "")
     if not google_api_key:
-        st.warning("⚠️ Please enter your Google API key on the Dashboard first.")
-        return
+        google_api_key = st.text_input("Enter your Google API key", type="password")
+        if google_api_key:
+            st.session_state["google_api_key"] = google_api_key
+        else:
+            st.warning("Please enter your Google API key to continue.")
+            return
 
     # Configure Google Generative AI
     try:
         genai.configure(api_key=google_api_key)
     except Exception as e:
-        st.error(f"API Key Error: {e}")
+        st.error(f"API Key configuration error: {e}")
         return
 
     st.success("✅ API key loaded. Gemini AI is ready.")
 
-    project_name = st.text_input("Project Name", "Mixed-Use Development Phase 1")
-    reporting_period_start = st.date_input("Reporting Period Start")
-    reporting_period_end = st.date_input("Reporting Period End")
     description = st.text_area(
-        "Enter progress description",
-        placeholder="E.g., Completed foundation pouring for Block A. Started steel framing for Block B..."
+        "Project Progress Description",
+        placeholder="e.g., Completed foundation pouring for Block A. Started steel framing for Block B..."
     )
 
-    if st.button("Generate Productivity Report"):
-        if not description:
-            st.warning("Please enter a progress description to generate the report.")
+    if st.button("Generate Report"):
+        if not description.strip():
+            st.warning("Please enter a progress description.")
             return
-        if reporting_period_start > reporting_period_end:
-            st.warning("Reporting period start date must be before end date.")
-            return
+        with st.spinner("Generating productivity report..."):
+            try:
+                report = generate_productivity_report(description)
+                st.markdown(report)
+            except Exception as e:
+                st.error(f"Failed to generate report: {e}")
 
-        # Format dates as strings
-        start_date_str = reporting_period_start.strftime("%B %d, %Y")
-        end_date_str = reporting_period_end.strftime("%B %d, %Y")
-        today_str = datetime.today().strftime("%B %d, %Y")
-
-        prompt = f"""
-        You are a construction project manager AI assistant. Based on the following progress description, generate a formal productivity report with the following sections:
-
-        Construction Project Productivity Report  
-        Date: {today_str}  
-        Project: {project_name}  
-        Reporting Period: {start_date_str} - {end_date_str}
-
-        1. Overall Summary  
-        Provide a brief overview of the project status.
-
-        2. Key Accomplishments  
-        Provide a bulleted list of completed tasks and milestones.
-
-        3. Identified Challenges/Blockers  
-        Provide a bulleted list of any issues hindering progress.
-
-        4. Plan for Next Period  
-        Provide a bulleted list of upcoming tasks and goals.
-
-        Here is the progress description:  
-        ---  
-        {description}  
-        ---
-        """
-
-        try:
-            model = genai.GenerativeModel("gemini-2.5-flash")  # Use your correct model
-            response = model.generate_content(prompt)
-            st.subheader("🏗️ Generated Productivity Report")
-            st.markdown(response.text)
-        except Exception as e:
-            st.error(f"AI Error: {e}")
+if __name__ == "__main__":
+    app()
