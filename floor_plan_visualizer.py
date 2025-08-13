@@ -15,7 +15,6 @@ def app():
                 st.session_state["google_api_key"] = key.strip()
                 st.session_state["api_key_saved"] = True
                 st.success("✅ API key saved! You can now generate images.")
-                st.experimental_rerun()
             else:
                 st.error("❌ Please enter a valid API key.")
         return  # Stop the app here
