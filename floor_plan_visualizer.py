@@ -6,69 +6,62 @@ from io import BytesIO
 
 def app():
     st.header("🏠 3D Floor Plan Visualizer")
-    st.write("Generate clean, realistic 3D floor plan images from your architectural descriptions using AI.")
+    st.write("Create clean, text-free 3D floor plan renderings from descriptive prompts.")
 
-    # API Key Input
+    # Step 1: Get API key
     if "google_api_key" not in st.session_state or not st.session_state.get("api_key_saved", False):
-        api_key = st.text_input("🔑 Enter your Google API Key", type="password")
+        key = st.text_input("🔑 Enter your Google API Key", type="password")
         if st.button("Save API Key"):
-            if api_key.strip():
-                st.session_state["google_api_key"] = api_key.strip()
+            if key.strip():
+                st.session_state["google_api_key"] = key.strip()
                 st.session_state["api_key_saved"] = True
-                st.success("✅ API key saved!")
+                st.success("✅ API key saved! You can now generate images.")
             else:
-                st.error("⚠️ Please enter a valid API key.")
+                st.error("❌ Please enter a valid API key.")
         return  # Exit until key is entered
+	
 
-    # Configure Gemini client
-    genai.configure(api_key=st.session_state["google_api_key"])
-    client = genai.GenerativeModel("gemini-1.5-flash")
 
-    # ✅ Now show the prompt input
-    st.subheader("📝 Describe your floor plan:")
-    prompt = st.text_area("e.g. Modern 2-bedroom apartment with balcony and open kitchen", height=100)
-
-    aspect = st.selectbox("Aspect Ratio", ["Any", "Square (1:1)", "Portrait (9:16)", "Landscape (16:9)"])
-    img_format = st.selectbox("Output Format", ["PNG", "JPEG"])
+    # Step 3: Get user input
+    prompt = st.text_area("📝 Describe your floor plan:", height=150,
+                          placeholder="e.g. Modern 2-bedroom apartment with balcony and open kitchen")
 
     if st.button("🎨 Generate 3D Floor Plan"):
         if not prompt.strip():
-            st.warning("Please enter a description.")
-            return
+            st.warning("⚠️ Please enter a description.")
+        else:
+            full_prompt = f"{prompt.strip()}, 3D Render, clean architectural floor plan, no text, isometric view"
 
-        full_prompt = f"{prompt.strip()}, 3D Render, isometric view, clean layout, no text, no labels"
-        if aspect != "Any":
-            full_prompt += f", aspect ratio {aspect}"
+            with st.spinner("Generating image..."):
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash-exp-image-generation",
+                        contents=[full_prompt],
+                        config=types.GenerateContentConfig(response_modalities=['TEXT', 'IMAGE'])
+                    )
 
-        with st.spinner("Generating image..."):
-            try:
-                response = client.generate_content(
-                    contents=[full_prompt],
-                    generation_config=types.GenerationConfig(response_mime_type="image/png")
-                )
+                    image_found = False
+                    for part in response.candidates[0].content.parts:
+                        if hasattr(part, "inline_data") and part.inline_data:
+                            image = Image.open(BytesIO(part.inline_data.data))
+                            st.image(image, caption="🏡 Generated 3D Floor Plan", use_container_width=True)
 
-                image_data = response.parts[0].inline_data.data
-                image = Image.open(BytesIO(image_data))
+                            # Download option
+                            img_bytes = BytesIO()
+                            image.save(img_bytes, format="PNG")
+                            img_bytes.seek(0)
+                            st.download_button("⬇️ Download Image", data=img_bytes, file_name="floor_plan.png", mime="image/png")
 
-                st.image(image, caption="Generated 3D Floor Plan", use_container_width=True)
+                            image_found = True
+                            break
+                        elif hasattr(part, "text") and part.text:
+                            st.info(f"🧠 Model Text Response:\n\n{part.text}")
 
-                # Download button
-                img_bytes = BytesIO()
-                fmt = img_format.upper()
-                if fmt == "JPG":
-                    fmt = "JPEG"
-                image.save(img_bytes, format=fmt)
-                img_bytes.seek(0)
+                    if not image_found:
+                        st.error("❌ No image returned. Try rewording the description or simplifying it.")
 
-                st.download_button(
-                    label="📥 Download Image",
-                    data=img_bytes,
-                    file_name=f"floorplan.{img_format.lower()}",
-                    mime=f"image/{img_format.lower()}"
-                )
-
-            except Exception as e:
-                st.error(f"⚠️ Error generating image: {e}")
+                except Exception as e:
+                    st.error(f"🚨 Error generating image: {e}")
 
 if __name__ == "__main__":
     app()
