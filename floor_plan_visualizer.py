@@ -53,11 +53,10 @@ def app():
 
         with st.spinner("🛠️ Generating image..."):
             try:
-                # Use the correct image generation model
-                model = genai.GenerativeModel("gemini-1.5-flash")  # or use your preferred model
-                response = model.generate_content(
-                    full_prompt,
-                    generation_config={"response_mime_type": "image/png"}
+                response = client.models.generate_content(
+                        model="gemini-2.0-flash-exp-image-generation",
+                        contents=[full_prompt],
+                        config=types.GenerateContentConfig(response_modalities=['TEXT', 'IMAGE'])
                 )
 
                 image_data = None
