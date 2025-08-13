@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -12,7 +13,6 @@ def app():
         api_key = st.text_input("🔑 Enter your Google API Key", type="password")
         if st.button("Save API Key"):
             if api_key:
-                genai.configure(api_key=api_key)
                 st.session_state["google_api_key"] = api_key
                 st.session_state["api_key_saved"] = True
                 st.success("API key saved successfully!")
@@ -20,8 +20,10 @@ def app():
                 st.error("Please enter a valid API key.")
         return  # Stop execution until key is provided
 
-    # Configure client
-    genai.configure(api_key=st.session_state["google_api_key"])
+    # Set API key as environment variable for the client
+    os.environ["GOOGLE_API_KEY"] = st.session_state["google_api_key"]
+
+    # Initialize the client (no configure() call)
     client = genai.GenerativeModel("gemini-1.5-flash")
 
     # Prompt input
@@ -47,13 +49,13 @@ def app():
                     generation_config=types.GenerationConfig(response_mime_type="image/png")
                 )
 
-                # Extract image
+                # Extract image data
                 image_data = response.parts[0].inline_data.data
                 image = Image.open(BytesIO(image_data))
 
                 st.image(image, caption="Generated 3D Floor Plan", use_container_width=True)
 
-                # Download button
+                # Prepare image for download
                 img_bytes = BytesIO()
                 fmt = img_format.upper()
                 if fmt == "JPG":
@@ -73,5 +75,3 @@ def app():
 
 if __name__ == "__main__":
     app()
-
-
