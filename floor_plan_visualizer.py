@@ -4,16 +4,23 @@ from google.genai import types
 from PIL import Image
 from io import BytesIO
 
-client = genai.Client()
-
-def generate_floor_plan_image(description):
+def generate_floor_plan_image(description, client):
     prompt = f"Generate a realistic 3D rendered floor plan image based on the description:\n{description}"
+
     response = client.models.generate_content(
         model="gemini-2.0-flash-exp-image-generation",
         contents=[prompt],
         config=types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"])
     )
-    return response
+
+    # Extract image from response
+    for part in response.candidates[0].content.parts:
+        if part.inline_data:
+            return Image.open(BytesIO(part.inline_data.data))
+        elif part.text:
+            # fallback text output
+            return part.text
+    return "No image found in response."
 
 def app():
     st.title("Floor Plan Visualizer - 3D Image Generation")
@@ -22,9 +29,6 @@ def app():
         key = st.text_input("Enter your Google API Key", type="password")
         if st.button("Save API Key"):
             if key.strip():
-                # You must set environment variable or configure API key here
-                import os
-                os.environ["GOOGLE_API_KEY"] = key.strip()
                 st.session_state["google_api_key"] = key.strip()
                 st.session_state["api_key_saved"] = True
                 st.success("✅ API key saved!")
@@ -44,30 +48,14 @@ def app():
         else:
             with st.spinner("Generating 3D floor plan image..."):
                 try:
-                    response = generate_floor_plan_image(description)
-                    found_image = False
-                    for part in response.candidates[0].content.parts:
-                        if part.text:
-                            st.write(part.text)
-                        elif part.inline_data:
-                            image = Image.open(BytesIO(part.inline_data.data))
-                            st.image(image, caption="3D Floor Plan Image", use_container_width=True)
+                    client = genai.Client(api_key=st.session_state["google_api_key"])
+                    image_or_text = generate_floor_plan_image(description, client)
 
-                            # Optional: allow download in PNG
-                            img_bytes = BytesIO()
-                            image.save(img_bytes, format="PNG")
-                            img_bytes.seek(0)
+                    if isinstance(image_or_text, Image.Image):
+                        st.image(image_or_text, caption="3D Floor Plan Image", use_container_width=True)
+                    else:
+                        st.text(f"Model response:\n{image_or_text}")
 
-                            st.download_button(
-                                label="Download Image (PNG)",
-                                data=img_bytes,
-                                file_name="floor_plan.png",
-                                mime="image/png"
-                            )
-                            found_image = True
-
-                    if not found_image:
-                        st.error("❌ No image found in the response. Try simplifying the description.")
                 except Exception as e:
                     st.error(f"Failed to generate 3D image: {e}")
 
