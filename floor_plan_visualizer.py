@@ -14,18 +14,19 @@ def generate_svg_floor_plan(description):
     response = model.generate_content(prompt)
     return response.text
 
-def generate_3d_floor_plan_image(description):
+def generate_base64_png_image(description):
     prompt = f"""
-    Generate a detailed description or prompt for a 3D rendered image of a floor plan with the following layout:
+    Generate a base64 encoded PNG image data URI of a 3D rendered floor plan image
+    with the following description:
+
     {description}
 
-    The image should be realistic with walls, doors, windows, and furniture visible from an isometric perspective.
-    Return either an image URL or a detailed prompt for a 3D rendering.
+    Only output the image as a data URI string starting with "data:image/png;base64,".
     """
     genai.configure(api_key=st.session_state["google_api_key"])
     model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
-    return response.text  # Could be a URL or prompt for a 3D image
+    return response.text
 
 def app():
     st.title("Floor Plan Visualizer")
@@ -44,7 +45,7 @@ def app():
     description = st.text_area(
         "Describe your floor plan (e.g. room sizes, doors, windows):",
         height=200,
-        placeholder="e.g., 'A 20ft by 30ft rectangular workshop with a large garage door on the north wall...'"
+        placeholder="e.g., 'A modern 3-bedroom house with garage and garden...'"
     )
 
     col1, col2 = st.columns(2)
@@ -61,17 +62,20 @@ def app():
                         st.error(f"Failed to generate SVG: {e}")
 
     with col2:
-        if st.button("Generate 3D Floor Plan Image Prompt"):
+        if st.button("Generate 3D Floor Plan Image (Base64 PNG)"):
             if not description.strip():
                 st.warning("Please enter a floor plan description.")
             else:
-                with st.spinner("Generating 3D floor plan prompt..."):
+                with st.spinner("Generating 3D floor plan image..."):
                     try:
-                        result = generate_3d_floor_plan_image(description)
-                        st.info("Here’s a prompt or URL for a 3D floor plan image:")
-                        st.write(result)
-                        # If this is an image URL, you can also display it:
-                        if result.startswith("http"):
-                            st.image(result, caption="3D Floor Plan Image")
+                        base64_img = generate_base64_png_image(description)
+                        if base64_img.startswith("data:image/png;base64,"):
+                            st.image(base64_img, caption="3D Floor Plan Image")
+                        else:
+                            st.warning("Model did not return a valid image data URI. Here's the output:")
+                            st.text(base64_img)
                     except Exception as e:
-                        st.error(f"Failed to generate 3D floor plan image: {e}")
+                        st.error(f"Failed to generate 3D image: {e}")
+
+if __name__ == "__main__":
+    app()
