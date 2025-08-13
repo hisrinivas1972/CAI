@@ -19,8 +19,10 @@ def app():
             else:
                 st.error("❌ Please enter a valid API key.")
         return  # Exit until key is entered
-	
 
+    # Step 2: Configure Gemini client
+    genai.configure(api_key=st.session_state["google_api_key"])
+    client = genai.GenerativeModel("gemini-1.5-flash")
 
     # Step 3: Get user input
     prompt = st.text_area("📝 Describe your floor plan:", height=150,
@@ -34,31 +36,19 @@ def app():
 
             with st.spinner("Generating image..."):
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-exp-image-generation",
+                    response = client.generate_content(
                         contents=[full_prompt],
-                        config=types.GenerateContentConfig(response_modalities=['TEXT', 'IMAGE'])
+                        generation_config=types.GenerationConfig(response_mime_type="image/png")
                     )
 
-                    image_found = False
-                    for part in response.candidates[0].content.parts:
-                        if hasattr(part, "inline_data") and part.inline_data:
-                            image = Image.open(BytesIO(part.inline_data.data))
-                            st.image(image, caption="🏡 Generated 3D Floor Plan", use_container_width=True)
+                    image = Image.open(BytesIO(response.parts[0].inline_data.data))
+                    st.image(image, caption="🏡 Generated 3D Floor Plan", use_container_width=True)
 
-                            # Download option
-                            img_bytes = BytesIO()
-                            image.save(img_bytes, format="PNG")
-                            img_bytes.seek(0)
-                            st.download_button("⬇️ Download Image", data=img_bytes, file_name="floor_plan.png", mime="image/png")
-
-                            image_found = True
-                            break
-                        elif hasattr(part, "text") and part.text:
-                            st.info(f"🧠 Model Text Response:\n\n{part.text}")
-
-                    if not image_found:
-                        st.error("❌ No image returned. Try rewording the description or simplifying it.")
+                    # Download option
+                    img_bytes = BytesIO()
+                    image.save(img_bytes, format="PNG")
+                    img_bytes.seek(0)
+                    st.download_button("⬇️ Download Image", data=img_bytes, file_name="floor_plan.png", mime="image/png")
 
                 except Exception as e:
                     st.error(f"🚨 Error generating image: {e}")
