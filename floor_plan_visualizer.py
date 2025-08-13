@@ -17,7 +17,6 @@ def app():
                 st.success("✅ API key saved! You can now generate images.")
             else:
                 st.error("❌ Please enter a valid API key.")
-        return  # Stop the app here
 
     # Step 2: Initialize Gemini client
     try:
