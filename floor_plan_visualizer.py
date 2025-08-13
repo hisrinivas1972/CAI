@@ -4,54 +4,76 @@ from google.genai import types
 from PIL import Image
 from io import BytesIO
 
-st.set_page_config(page_title="Google Gemini AI Image Generator", layout="centered")
+# Set wide layout for responsiveness
+st.set_page_config(layout="wide")
 
-# API Key input with password field saved in session state
-if "google_api_key" not in st.session_state:
-    st.session_state["google_api_key"] = ""
-
-if not st.session_state["google_api_key"]:
-    st.title("🔐 Enter your Google API Key")
-    key_input = st.text_input("Google API Key", type="password")
-    if st.button("Save API Key"):
-        if key_input.strip():
-            st.session_state["google_api_key"] = key_input.strip()
-            st.success("API Key saved! Reloading app...")
-            st.experimental_rerun()
-        else:
-            st.error("Please enter a valid API Key.")
-    st.stop()  # Stop execution until key is entered
-
-# Initialize Gemini client with provided API key
-client = genai.Client(api_key=st.session_state["google_api_key"])
-
+# --- UI Title ---
 st.title("🎨 Google Gemini AI Image Generator")
 
-# User inputs
-prompt = st.text_area("Enter your image prompt here", height=150)
+# --- App Instructions ---
+st.markdown("""
+---
 
-style = st.selectbox(
-    "Choose Artistic Style",
-    ["Any", "Photorealistic", "Pixel Art", "Vector Art", "3D Render", "Isometric",
-     "Cartoon", "Fantasy Art", "Cyberpunk", "Steampunk", "Watercolor", "Oil Painting", "Concept Art", "Low Poly",
-     "Line Art", "Ink Drawing", "Pencil Drawing", "Minimalist", "Surrealism", "Abstract", "Neon Glow", "Flat Design"]
-)
+🧠 **Before You Use the App**  
+To generate images with Google Gemini AI, you'll need to provide your own API key. This keeps your usage secure and personalized.
 
-aspect = st.selectbox(
-    "Choose Aspect Ratio Hint",
-    ["Any", "Square (1:1)", "Portrait (9:16)", "Landscape (16:9)"]
-)
+🔐 **Required API Key:**  
+`GOOGLE_API_KEY` → used to access Google Gemini AI
 
-img_format = st.selectbox("Choose Output Format", ["PNG", "JPEG"])
+👉 [Get your API key here](https://lnkd.in/gYwg2sTJ)
 
+---
+""")
+
+
+# --- API Key Input ---
+api_key = st.text_input("🔐 Enter your Google API Key", type="password")
+if not api_key:
+    st.warning("Please enter your API key to continue.")
+    st.stop()
+
+# --- Configure Client ---
+try:
+    # The new genai package expects setting the env variable or alternative auth
+    # If your genai version supports configure, uncomment the next line:
+    # genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)  # Pass API key directly to Client if supported
+except Exception as e:
+    st.error(f"❌ Failed to authenticate with API key: {e}")
+    st.stop()
+
+# --- Layout with columns ---
+col1, col2 = st.columns([3, 1])
+
+with col1:
+    prompt = st.text_area("📝 Enter your image prompt here", height=150)
+
+with col2:
+    with st.expander("🎨 Options"):
+        style = st.selectbox(
+            "Choose Artistic Style",
+            ["Any", "Photorealistic", "Pixel Art", "Vector Art", "3D Render", "Isometric",
+             "Cartoon", "Fantasy Art", "Cyberpunk", "Steampunk", "Watercolor", "Oil Painting",
+             "Concept Art", "Low Poly", "Line Art", "Ink Drawing", "Pencil Drawing",
+             "Minimalist", "Surrealism", "Abstract", "Neon Glow", "Flat Design"]
+        )
+
+        aspect = st.selectbox(
+            "Choose Aspect Ratio Hint",
+            ["Any", "Square (1:1)", "Portrait (9:16)", "Landscape (16:9)"]
+        )
+
+        img_format = st.selectbox("Choose Output Format", ["PNG", "JPEG"])
+
+# --- Construct Final Prompt ---
 style_hint = f"in {style} style" if style != "Any" else ""
 aspect_hint = f"aspect ratio {aspect}" if aspect != "Any" else ""
-
 full_prompt = f"{prompt.strip()}, {style_hint}, {aspect_hint}".strip(", ")
 
-if st.button("Generate Image"):
+# --- Generate Image ---
+if st.button("🚀 Generate Image"):
     if not prompt.strip():
-        st.warning("Please enter a prompt.")
+        st.warning("⚠️ Please enter a prompt.")
     else:
         with st.spinner("Generating image..."):
             try:
@@ -69,8 +91,9 @@ if st.button("Generate Image"):
                         st.write(part.text)
                     elif part.inline_data:
                         image = Image.open(BytesIO(part.inline_data.data))
-                        st.image(image, caption="Generated Image", use_container_width=True)
+                        st.image(image, caption="🖼 Generated Image", use_container_width=True)
 
+                        # Save image for download
                         img_bytes = BytesIO()
                         file_format = img_format.upper()
                         if file_format == "JPG":
@@ -79,45 +102,39 @@ if st.button("Generate Image"):
                         img_bytes.seek(0)
 
                         st.download_button(
-                            label="Download Image",
+                            label="⬇️ Download Image",
                             data=img_bytes,
-                            file_name=f"gemini_generated_image.{img_format.lower()}",
+                            file_name=f"gemini_image.{img_format.lower()}",
                             mime=f"image/{img_format.lower()}"
                         )
-                        st.success("✅ Image generated and ready for download!")
+
+                        st.success("✅ Image generated successfully!")
                         found_image = True
 
                 if not found_image:
-                    st.error("❌ No image found in the response. Try simplifying the prompt.")
-
+                    st.error("❌ No image found. Try a simpler or clearer prompt.")
             except Exception as e:
-                st.error(f"Error generating image: {e}")
+                st.error(f"❌ Error during image generation: {e}")
 
-# Prompt writing tips section
+# --- Prompt Tips ---
 st.markdown("---")
 st.markdown("""
-### 💡 Prompt Writing Tips & Hints
+### 💡 Prompt Writing Tips
 
-**Be descriptive!** Mention:
-- **Subjects**, **actions**, **colors**, **art style**, **mood**, **lighting**, and **composition**.
+Be descriptive and include:
+- **Subjects**, **actions**, **colors**, **style**, **mood**, **lighting**, **composition**
 
-**Example Prompt:**
-> *"A serene bioluminescent mushroom forest at night, glowing flora, mystical atmosphere"*
-> *"A cute baby sea otter floating on its back, holding a small colorful shell"*
+**Examples**:
+- "A majestic dragon flying over snow-capped mountains, fantasy art style" - without option
+- "A cozy coffee shop at sunset, watercolor painting, warm light" - without option
+- "A cozy coffee shop at sunset, warm light" - with option
+
 
 ---
 
-**Artistic Style Options:**
-Photorealistic, Pixel Art, Vector Art, 3D Render, Isometric, Cartoon, Fantasy Art, Cyberpunk, Steampunk, Watercolor, Oil Painting
+**Style Options:** Pixel Art, 3D Render, Oil Painting, etc.  
+**Aspect Ratios:** Square, Portrait, Landscape  
+**Formats:** PNG or JPEG
 
-**Output Format:**
-PNG, JPEG, etc.
-
-**Aspect Ratio Hint:**
-- Square (1:1)
-- Portrait (9:16)
-- Landscape (16:9)
-- Any (Default)
-
-*Note: These are only hints for the AI. Results may vary depending on prompt complexity.*
+*These are just hints to the AI. Results may vary.*
 """)
