@@ -6,6 +6,7 @@ from io import BytesIO
 
 def app():
     st.header("🏠 3D Floor Plan Visualizer")
+    st.write("Create clean, text-free 3D floor plan renderings from descriptive prompts.")
 
     # Step 1: Get API key
     if "google_api_key" not in st.session_state or not st.session_state.get("api_key_saved", False):
