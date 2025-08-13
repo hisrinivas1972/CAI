@@ -15,7 +15,7 @@ def set_google_api_key():
             st.error("⚠️ Please enter a valid API key.")
 
 def app():
-    st.title("Productivity Reporter")
+    st.title("📊 Productivity Reporter")
     st.write("Generate a structured construction project productivity report using AI.")
     
     google_api_key = st.session_state.get("google_api_key", "")
