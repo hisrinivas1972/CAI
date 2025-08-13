@@ -14,11 +14,11 @@ def app():
             if key.strip():
                 st.session_state["google_api_key"] = key.strip()
                 st.session_state["api_key_saved"] = True
-                st.success("✅ API key saved! You can now generate images.")
-                try:
-                    st.experimental_rerun()  # Immediately rerun so UI updates
-                except Exception as e:
-                    st.error(f"Failed to rerun app: {e}")
+                st.success("✅ API key saved! Please reload the page to continue.")
+                # Stop further execution so user can reload
+                return
+            else:
+                st.error("❌ Please enter a valid API key.")
         return  # Stop here until API key is saved
 
     # Step 2: Initialize Gemini client
@@ -50,12 +50,10 @@ def app():
 
                     image_found = False
                     for part in response.candidates[0].content.parts:
-                        # Check if part has image data
                         if hasattr(part, "inline_data") and part.inline_data:
                             image = Image.open(BytesIO(part.inline_data.data))
                             st.image(image, caption="🏡 Generated 3D Floor Plan", use_container_width=True)
 
-                            # Download button
                             img_bytes = BytesIO()
                             image.save(img_bytes, format="PNG")
                             img_bytes.seek(0)
