@@ -7,11 +7,9 @@ def generate_floor_plan_image(description):
 
     prompt = f"Generate a realistic 3D rendered floor plan image based on the description:\n{description}"
 
-    response = model.generate_content(prompt=prompt)
-    
-    # The response may include an image URL or base64 string depending on API response format.
-    # Adjust accordingly to your API's response structure.
-    return response.text  # or response.data[0].url if your SDK returns structured data
+    response = model.generate_content({"prompt": prompt})
+
+    return response.text
 
 def app():
     st.title("Floor Plan Visualizer - 3D Image Generation")
@@ -40,10 +38,8 @@ def app():
             with st.spinner("Generating 3D floor plan image..."):
                 try:
                     image_data = generate_floor_plan_image(description)
-                    # If the response is a URL to image, display it:
                     if image_data.startswith("http"):
                         st.image(image_data, caption="3D Floor Plan Image")
-                    # If base64 data URI, display directly:
                     elif image_data.startswith("data:image"):
                         st.image(image_data, caption="3D Floor Plan Image")
                     else:
