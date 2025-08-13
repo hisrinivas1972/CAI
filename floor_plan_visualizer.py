@@ -1,88 +1,77 @@
 import streamlit as st
-import google.generativeai as genai
-from google.generativeai.types import content_types
+from google import genai
+from google.genai import types
 from PIL import Image
 from io import BytesIO
 
-# --------------------
-# Helper: Configure Gemini client
-# --------------------
-def configure_client(api_key):
-    try:
-        genai.configure(api_key=api_key)
-        return genai
-    except Exception as e:
-        st.error(f"❌ Failed to configure Gemini client: {e}")
-        return None
-
-# --------------------
-# Main Streamlit App
-# --------------------
 def app():
-    st.set_page_config(page_title="3D Floor Plan Visualizer", page_icon="🏠")
-    st.header("🏠 3D Floor Plan Visualizer")
-    st.write("Create clean, text-free 3D floor plan renderings from descriptive prompts.")
+    st.title("🏠 3D Floor Plan Visualizer")
 
-    # Step 1: Get API key
+    # Get API key from user
     if "google_api_key" not in st.session_state or not st.session_state.get("api_key_saved", False):
-        key = st.text_input("🔑 Enter your Google API Key", type="password")
+        api_key = st.text_input("🔑 Enter your Google API Key", type="password")
         if st.button("Save API Key"):
-            if key.strip():
-                st.session_state["google_api_key"] = key.strip()
+            if api_key:
+                genai.configure(api_key=api_key)
+                st.session_state["google_api_key"] = api_key
                 st.session_state["api_key_saved"] = True
-                st.success("✅ API key saved! You can now generate images.")
+                st.success("API key saved successfully!")
             else:
-                st.error("❌ Please enter a valid API key.")
-        return  # Stop app until API key is saved
+                st.error("Please enter a valid API key.")
+        return  # Stop execution until key is provided
 
-    # Step 2: Configure client
-    genai = configure_client(st.session_state["google_api_key"])
-    if not genai:
-        return
+    # Configure client
+    genai.configure(api_key=st.session_state["google_api_key"])
+    client = genai.GenerativeModel("gemini-1.5-flash")
 
-    # Step 3: Get user input
-    prompt = st.text_area("📝 Describe your floor plan:", height=150,
-                          placeholder="e.g. Modern 2-bedroom apartment with balcony and open kitchen")
+    # Prompt input
+    st.markdown("### 📝 Describe your floor plan:")
+    prompt = st.text_area("e.g. Modern 2-bedroom apartment with balcony and open kitchen", height=100)
+
+    aspect = st.selectbox("Aspect Ratio", ["Any", "Square (1:1)", "Portrait (9:16)", "Landscape (16:9)"])
+    img_format = st.selectbox("Output Format", ["PNG", "JPEG"])
 
     if st.button("🎨 Generate 3D Floor Plan"):
         if not prompt.strip():
-            st.warning("⚠️ Please enter a description.")
+            st.warning("Please enter a description.")
             return
 
-        full_prompt = f"{prompt.strip()}, 3D Render, clean architectural floor plan, no text, isometric view"
+        full_prompt = f"{prompt.strip()}, 3D Render, isometric view, clean layout, no text, no labels"
+        if aspect != "Any":
+            full_prompt += f", aspect ratio {aspect}"
 
-        with st.spinner("🛠️ Generating image..."):
+        with st.spinner("Generating image..."):
             try:
-                response = client.models.generate_content(
-                        model="gemini-2.0-flash-exp-image-generation",
-                        contents=[full_prompt],
-                        config=types.GenerateContentConfig(response_modalities=['TEXT', 'IMAGE'])
+                response = client.generate_content(
+                    contents=[full_prompt],
+                    generation_config=types.GenerationConfig(response_mime_type="image/png")
                 )
 
-                image_data = None
+                # Extract image
+                image_data = response.parts[0].inline_data.data
+                image = Image.open(BytesIO(image_data))
 
-                for part in response.parts:
-                    if hasattr(part, "inline_data") and part.inline_data:
-                        image_data = part.inline_data.data
-                        break
+                st.image(image, caption="Generated 3D Floor Plan", use_container_width=True)
 
-                if image_data:
-                    image = Image.open(BytesIO(image_data))
-                    st.image(image, caption="🏡 Generated 3D Floor Plan", use_container_width=True)
+                # Download button
+                img_bytes = BytesIO()
+                fmt = img_format.upper()
+                if fmt == "JPG":
+                    fmt = "JPEG"
+                image.save(img_bytes, format=fmt)
+                img_bytes.seek(0)
 
-                    # Download button
-                    img_bytes = BytesIO()
-                    image.save(img_bytes, format="PNG")
-                    img_bytes.seek(0)
-                    st.download_button("⬇️ Download Image", data=img_bytes, file_name="floor_plan.png", mime="image/png")
-                else:
-                    st.error("❌ No image returned. Try simplifying your description.")
+                st.download_button(
+                    label="📥 Download Image",
+                    data=img_bytes,
+                    file_name=f"floorplan.{img_format.lower()}",
+                    mime=f"image/{img_format.lower()}"
+                )
 
             except Exception as e:
-                st.error(f"🚨 Error generating image: {e}")
+                st.error(f"⚠️ Error generating image: {e}")
 
-# --------------------
-# Entry point
-# --------------------
 if __name__ == "__main__":
     app()
+
+
