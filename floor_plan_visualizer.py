@@ -18,12 +18,6 @@ def app():
             else:
                 st.error("❌ Please enter a valid API key.")
 
-    # Step 2: Initialize Gemini client
-    try:
-        client = genai.Client(api_key=st.session_state["google_api_key"])
-    except Exception as e:
-        st.error(f"🔒 Failed to initialize client: {e}")
-        return
 
     # Step 3: Get user input
     prompt = st.text_area("📝 Describe your floor plan:", height=150,
