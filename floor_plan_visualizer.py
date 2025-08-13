@@ -1,56 +1,58 @@
-import os
 import streamlit as st
 from google import genai
 from google.genai import types
 from PIL import Image
 from io import BytesIO
 
-# Initialize Gemini client with API key from environment variable
-client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+st.set_page_config(page_title="Google Gemini AI Image Generator", layout="centered")
 
-st.title("🏠 Clean 3D Floor Plan Image Generator")
+# API Key input with password field saved in session state
+if "google_api_key" not in st.session_state:
+    st.session_state["google_api_key"] = ""
 
-def enhance_prompt(user_prompt, style, aspect):
-    base_prompt = user_prompt.strip()
-    if not base_prompt:
-        return ""
+if not st.session_state["google_api_key"]:
+    st.title("🔐 Enter your Google API Key")
+    key_input = st.text_input("Google API Key", type="password")
+    if st.button("Save API Key"):
+        if key_input.strip():
+            st.session_state["google_api_key"] = key_input.strip()
+            st.success("API Key saved! Reloading app...")
+            st.experimental_rerun()
+        else:
+            st.error("Please enter a valid API Key.")
+    st.stop()  # Stop execution until key is entered
 
-    floorplan_keywords = ["floor plan", "apartment", "house", "bedroom", "living room", "kitchen"]
-    if any(word in base_prompt.lower() for word in floorplan_keywords):
-        style_hint = "3D Render"
-        clean_hints = "no text, no labels, clean architectural render"
-    else:
-        style_hint = style if style != "Any" else ""
-        clean_hints = ""
+# Initialize Gemini client with provided API key
+client = genai.Client(api_key=st.session_state["google_api_key"])
 
-    aspect_hint = f"aspect ratio {aspect}" if aspect != "Any" else ""
-
-    hints = ", ".join(filter(None, [style_hint, clean_hints, aspect_hint]))
-    full_prompt = f"{base_prompt}, {hints}" if hints else base_prompt
-    return full_prompt
+st.title("🎨 Google Gemini AI Image Generator")
 
 # User inputs
-prompt = st.text_area("Enter your floor plan or image prompt here:", height=150)
+prompt = st.text_area("Enter your image prompt here", height=150)
+
 style = st.selectbox(
     "Choose Artistic Style",
     ["Any", "Photorealistic", "Pixel Art", "Vector Art", "3D Render", "Isometric",
-     "Cartoon", "Fantasy Art", "Cyberpunk", "Steampunk", "Watercolor", "Oil Painting",
-     "Concept Art", "Low Poly", "Line Art", "Ink Drawing", "Pencil Drawing",
-     "Minimalist", "Surrealism", "Abstract", "Neon Glow", "Flat Design"]
+     "Cartoon", "Fantasy Art", "Cyberpunk", "Steampunk", "Watercolor", "Oil Painting", "Concept Art", "Low Poly",
+     "Line Art", "Ink Drawing", "Pencil Drawing", "Minimalist", "Surrealism", "Abstract", "Neon Glow", "Flat Design"]
 )
+
 aspect = st.selectbox(
     "Choose Aspect Ratio Hint",
     ["Any", "Square (1:1)", "Portrait (9:16)", "Landscape (16:9)"]
 )
+
 img_format = st.selectbox("Choose Output Format", ["PNG", "JPEG"])
+
+style_hint = f"in {style} style" if style != "Any" else ""
+aspect_hint = f"aspect ratio {aspect}" if aspect != "Any" else ""
+
+full_prompt = f"{prompt.strip()}, {style_hint}, {aspect_hint}".strip(", ")
 
 if st.button("Generate Image"):
     if not prompt.strip():
         st.warning("Please enter a prompt.")
     else:
-        full_prompt = enhance_prompt(prompt, style, aspect)
-        st.markdown(f"**Using prompt:** `{full_prompt}`")
-
         with st.spinner("Generating image..."):
             try:
                 response = client.models.generate_content(
@@ -63,7 +65,9 @@ if st.button("Generate Image"):
 
                 found_image = False
                 for part in response.candidates[0].content.parts:
-                    if part.inline_data:
+                    if part.text:
+                        st.write(part.text)
+                    elif part.inline_data:
                         image = Image.open(BytesIO(part.inline_data.data))
                         st.image(image, caption="Generated Image", use_container_width=True)
 
@@ -77,23 +81,43 @@ if st.button("Generate Image"):
                         st.download_button(
                             label="Download Image",
                             data=img_bytes,
-                            file_name=f"generated_image.{img_format.lower()}",
+                            file_name=f"gemini_generated_image.{img_format.lower()}",
                             mime=f"image/{img_format.lower()}"
                         )
                         st.success("✅ Image generated and ready for download!")
                         found_image = True
-                    elif part.text:
-                        st.info(f"Model says:\n{part.text}")
 
                 if not found_image:
                     st.error("❌ No image found in the response. Try simplifying the prompt.")
+
             except Exception as e:
                 st.error(f"Error generating image: {e}")
 
+# Prompt writing tips section
 st.markdown("---")
 st.markdown("""
-### 💡 Prompt Writing Tips
-- Be descriptive but concise.
-- For floor plans, mention "3D Render", "no text", "clean architectural render" for best results.
-- Example prompt: *"Modern two-bedroom apartment floor plan, 3D Render, no text, isometric view"*
+### 💡 Prompt Writing Tips & Hints
+
+**Be descriptive!** Mention:
+- **Subjects**, **actions**, **colors**, **art style**, **mood**, **lighting**, and **composition**.
+
+**Example Prompt:**
+> *"A serene bioluminescent mushroom forest at night, glowing flora, mystical atmosphere"*
+> *"A cute baby sea otter floating on its back, holding a small colorful shell"*
+
+---
+
+**Artistic Style Options:**
+Photorealistic, Pixel Art, Vector Art, 3D Render, Isometric, Cartoon, Fantasy Art, Cyberpunk, Steampunk, Watercolor, Oil Painting
+
+**Output Format:**
+PNG, JPEG, etc.
+
+**Aspect Ratio Hint:**
+- Square (1:1)
+- Portrait (9:16)
+- Landscape (16:9)
+- Any (Default)
+
+*Note: These are only hints for the AI. Results may vary depending on prompt complexity.*
 """)
