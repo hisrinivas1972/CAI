@@ -7,7 +7,7 @@ from io import BytesIO
 def app():
     st.header("🏠 3D Floor Plan Visualizer")
 
-    # Step 1: Get API key
+    # Step 1: Get API key if not saved
     if "google_api_key" not in st.session_state or not st.session_state.get("api_key_saved", False):
         key = st.text_input("🔑 Enter your Google API Key", type="password")
         if st.button("Save API Key"):
@@ -15,10 +15,11 @@ def app():
                 st.session_state["google_api_key"] = key.strip()
                 st.session_state["api_key_saved"] = True
                 st.success("✅ API key saved! You can now generate images.")
-                st.experimental_rerun()
-            else:
-                st.error("❌ Please enter a valid API key.")
-        return  # Stop the app here
+                try:
+                    st.experimental_rerun()  # Immediately rerun so UI updates
+                except Exception as e:
+                    st.error(f"Failed to rerun app: {e}")
+        return  # Stop here until API key is saved
 
     # Step 2: Initialize Gemini client
     try:
@@ -27,16 +28,18 @@ def app():
         st.error(f"🔒 Failed to initialize client: {e}")
         return
 
-    # Step 3: Get user input
-    prompt = st.text_area("📝 Describe your floor plan:", height=150,
-                          placeholder="e.g. Modern 2-bedroom apartment with balcony and open kitchen")
+    # Step 3: Prompt input
+    prompt = st.text_area(
+        "📝 Describe your floor plan:",
+        height=150,
+        placeholder="e.g. Modern 2-bedroom apartment with balcony and open kitchen"
+    )
 
     if st.button("🎨 Generate 3D Floor Plan"):
         if not prompt.strip():
             st.warning("⚠️ Please enter a description.")
         else:
             full_prompt = f"{prompt.strip()}, 3D Render, clean architectural floor plan, no text, isometric view"
-
             with st.spinner("Generating image..."):
                 try:
                     response = client.models.generate_content(
@@ -47,11 +50,12 @@ def app():
 
                     image_found = False
                     for part in response.candidates[0].content.parts:
+                        # Check if part has image data
                         if hasattr(part, "inline_data") and part.inline_data:
                             image = Image.open(BytesIO(part.inline_data.data))
                             st.image(image, caption="🏡 Generated 3D Floor Plan", use_container_width=True)
 
-                            # Download option
+                            # Download button
                             img_bytes = BytesIO()
                             image.save(img_bytes, format="PNG")
                             img_bytes.seek(0)
