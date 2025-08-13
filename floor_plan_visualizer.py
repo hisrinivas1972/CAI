@@ -11,26 +11,23 @@ def generate_floor_plan_image(description, client):
         model="gemini-2.0-flash-exp-image-generation",
         contents=[prompt],
         config=types.GenerateContentConfig(
-            response_modalities=["TEXT", "IMAGE"],
-            # Optional: specify image size or other image generation configs here
-            image_generation_config=types.ImageGenerationConfig(
-                # image_size="1024x768"  # optional
-            ),
+            response_modalities=["TEXT", "IMAGE"]
         )
     )
 
-    # Parse response to find image inline data
+    # Try to find an image part in response
     for part in response.candidates[0].content.parts:
         if part.inline_data:
             image = Image.open(BytesIO(part.inline_data.data))
             return image
         elif part.text:
-            return part.text  # fallback text if no image
+            # In case only text is returned
+            return part.text
 
-    return "No image found in the response."
+    return None
 
 def app():
-    st.title("Floor Plan Visualizer - 3D Image Generation")
+    st.title("🛠️ Floor Plan Visualizer - 3D Image Generation")
 
     if "google_api_key" not in st.session_state or not st.session_state.get("api_key_saved", False):
         key = st.text_input("Enter your Google API Key", type="password")
@@ -60,11 +57,24 @@ def app():
                 result = generate_floor_plan_image(description, client)
 
                 if isinstance(result, Image.Image):
-                    st.image(result, caption="3D Floor Plan Image", use_container_width=True)
-                else:
-                    # Text fallback (likely description or error)
-                    st.text(result)
+                    st.image(result, caption="Generated 3D Floor Plan", use_container_width=True)
 
+                    # Prepare image for download
+                    img_bytes = BytesIO()
+                    result.save(img_bytes, format="PNG")
+                    img_bytes.seek(0)
+
+                    st.download_button(
+                        label="Download Image (PNG)",
+                        data=img_bytes,
+                        file_name="floor_plan_3d.png",
+                        mime="image/png"
+                    )
+                elif isinstance(result, str):
+                    st.info("Model Response:")
+                    st.write(result)
+                else:
+                    st.error("No image or text returned from the model.")
             except Exception as e:
                 st.error(f"Failed to generate 3D image: {e}")
 
