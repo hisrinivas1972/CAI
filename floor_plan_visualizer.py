@@ -67,3 +67,6 @@ def app():
 
                 except Exception as e:
                     st.error(f"🚨 Error generating image: {e}")
+
+if __name__ == "__main__":
+    app()
