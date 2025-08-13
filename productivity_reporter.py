@@ -4,7 +4,7 @@ from datetime import datetime
 
 def set_google_api_key():
     # Using 'password' type to mask the API key input
-    google_api_key = st.text_input("Enter Google API Key", type='password')
+    google_api_key = st.text_input("🔑 Enter your Google API Key", type='password')
     if st.button("Save API Key"):
         if google_api_key:
             st.session_state["google_api_key"] = google_api_key
